@@ -125,8 +125,8 @@ namespace Tusk.EditorTools
 
         private static (GameObject playerGO, PlayerController ctrl, PlayerStats stats) BuildPlayer(IslandGenerator island)
         {
-            // Place player at island center, on top of the dome
-            float startY = 7f; // above dome peak; gravity will settle
+            // Place player WELL above the dome peak (centerHeight=6) so they land cleanly
+            float startY = 15f;
             var go = new GameObject("Player");
             go.transform.position = new Vector3(0f, startY, 0f);
 
@@ -152,6 +152,8 @@ namespace Tusk.EditorTools
                 visual.transform.localRotation = Quaternion.identity;
                 // Meshy default scale is variable; auto-fit to ~1.8m tall
                 AutoScaleToHeight(visual, 1.8f);
+                // Placeholder tint until refine pass adds PBR textures
+                TintRenderer(visual, new Color(0.55f, 0.42f, 0.32f)); // leather brown
             }
             else
             {
@@ -285,13 +287,19 @@ namespace Tusk.EditorTools
 
         private static void TintRenderer(GameObject go, Color color)
         {
-            var r = go.GetComponent<Renderer>();
-            if (r == null) return;
             var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var m = new Material(shader);
-            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
-            else m.color = color;
-            r.sharedMaterial = m;
+            foreach (var r in go.GetComponentsInChildren<Renderer>())
+            {
+                var newMats = new Material[Mathf.Max(1, r.sharedMaterials.Length)];
+                for (int i = 0; i < newMats.Length; i++)
+                {
+                    var m = new Material(shader);
+                    if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
+                    else m.color = color;
+                    newMats[i] = m;
+                }
+                r.sharedMaterials = newMats;
+            }
         }
 
         private static void EnsureFolder(string path)

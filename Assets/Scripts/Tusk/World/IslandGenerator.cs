@@ -79,12 +79,13 @@ namespace Tusk.World
                 uvs[i + 1]   = new Vector2(0.5f + 0.5f * Mathf.Cos(a), 0.5f + 0.5f * Mathf.Sin(a));
             }
 
+            // Triangle winding: reversed so normals point UP (Unity Y-up, CW from above = up-facing)
             var tris = new int[segmentCount * 3];
             for (int i = 0; i < segmentCount; i++)
             {
                 tris[i * 3 + 0] = 0;
-                tris[i * 3 + 1] = i + 1;
-                tris[i * 3 + 2] = i + 2 > segmentCount ? 1 : i + 2;
+                tris[i * 3 + 1] = i + 2 > segmentCount ? 1 : i + 2;
+                tris[i * 3 + 2] = i + 1;
             }
 
             var mesh = new Mesh { name = "IslandGround" };
@@ -150,9 +151,19 @@ namespace Tusk.World
             if (prefab != null)
             {
                 go = Instantiate(prefab, _propsParent);
-                // Apply random scale variation to prevent visual clones
+                // Apply random scale variation
                 float s = Random.Range(scaleMin, scaleMax);
                 go.transform.localScale *= s;
+                go.transform.position = pos;
+                go.transform.rotation = Quaternion.Euler(0f, Random.value * 360f, 0f);
+                // Adjust Y so the bounding-box bottom sits on the ground (Meshy origins are often centered, not at-feet)
+                AlignBottomToGround(go, pos.y);
+                // Placeholder tint while unrefined Meshy previews are pure white
+                Color tint = fallbackName == "Tree"
+                    ? new Color(0.30f, 0.55f, 0.22f)  // forest green
+                    : new Color(0.50f, 0.50f, 0.52f); // weathered grey
+                ApplyPlaceholderTint(go, tint);
+                return; // already placed
             }
             else
             {
@@ -175,6 +186,34 @@ namespace Tusk.World
             }
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(0f, Random.value * 360f, 0f);
+        }
+
+        private static void ApplyPlaceholderTint(GameObject go, Color tint)
+        {
+            // Replace pure-white default material with a tinted Lit material instance
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            foreach (var r in go.GetComponentsInChildren<Renderer>())
+            {
+                var newMats = new Material[r.sharedMaterials.Length];
+                for (int i = 0; i < newMats.Length; i++)
+                {
+                    var m = new Material(shader);
+                    if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", tint);
+                    else m.color = tint;
+                    newMats[i] = m;
+                }
+                r.sharedMaterials = newMats;
+            }
+        }
+
+        private static void AlignBottomToGround(GameObject go, float groundY)
+        {
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return;
+            Bounds b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+            float dy = groundY - b.min.y;
+            go.transform.position += new Vector3(0f, dy, 0f);
         }
 
         private static void Tint(GameObject go, Color color)
