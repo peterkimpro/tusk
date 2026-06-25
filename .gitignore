@@ -1,0 +1,47 @@
+# Unity generated/cache
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.DS_Store
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Asset Store cache
+[Aa]ssets/AssetStoreTools*
+
+# Local config
+*.env
+*.local
