@@ -20,8 +20,14 @@ namespace Tusk.World
         [Header("Props")]
         [SerializeField] private int treeCount = 80;
         [SerializeField] private int rockCount = 40;
-        [SerializeField] private GameObject treePrefab;
+        [SerializeField] private GameObject[] treePrefabs; // multiple species, picked at random
+        [SerializeField] private GameObject[] rockPrefabs;
+        [SerializeField] private GameObject treePrefab;   // legacy single fallback
         [SerializeField] private GameObject rockPrefab;
+        [SerializeField] private float treeScaleMin = 0.8f;
+        [SerializeField] private float treeScaleMax = 1.3f;
+        [SerializeField] private float rockScaleMin = 0.6f;
+        [SerializeField] private float rockScaleMax = 1.4f;
         [SerializeField] private float edgeBufferFraction = 0.08f; // keep props away from cliff
 
         [Header("Seeding")]
@@ -117,11 +123,21 @@ namespace Tusk.World
         private void PlaceProps()
         {
             float spawnRadius = radius * (1f - edgeBufferFraction);
-            for (int i = 0; i < treeCount; i++)  SpawnProp(treePrefab, spawnRadius, "Tree");
-            for (int i = 0; i < rockCount; i++)  SpawnProp(rockPrefab, spawnRadius, "Rock");
+            for (int i = 0; i < treeCount; i++)  SpawnProp(PickPrefab(treePrefabs, treePrefab), spawnRadius, "Tree", treeScaleMin, treeScaleMax);
+            for (int i = 0; i < rockCount; i++)  SpawnProp(PickPrefab(rockPrefabs, rockPrefab), spawnRadius, "Rock", rockScaleMin, rockScaleMax);
         }
 
-        private void SpawnProp(GameObject prefab, float spawnRadius, string fallbackName)
+        private static GameObject PickPrefab(GameObject[] options, GameObject fallback)
+        {
+            if (options != null && options.Length > 0)
+            {
+                var pick = options[Random.Range(0, options.Length)];
+                if (pick != null) return pick;
+            }
+            return fallback;
+        }
+
+        private void SpawnProp(GameObject prefab, float spawnRadius, string fallbackName, float scaleMin = 1f, float scaleMax = 1f)
         {
             // Uniform sample over disk
             float r = spawnRadius * Mathf.Sqrt(Random.value);
@@ -134,6 +150,9 @@ namespace Tusk.World
             if (prefab != null)
             {
                 go = Instantiate(prefab, _propsParent);
+                // Apply random scale variation to prevent visual clones
+                float s = Random.Range(scaleMin, scaleMax);
+                go.transform.localScale *= s;
             }
             else
             {
@@ -147,8 +166,8 @@ namespace Tusk.World
                 }
                 else
                 {
-                    float s = Random.Range(0.8f, 1.8f);
-                    go.transform.localScale = new Vector3(s, s * 0.7f, s);
+                    float ps = Random.Range(0.8f, 1.8f);
+                    go.transform.localScale = new Vector3(ps, ps * 0.7f, ps);
                     Tint(go, new Color(0.45f, 0.45f, 0.48f));
                 }
                 var col = go.GetComponent<Collider>();

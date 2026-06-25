@@ -20,6 +20,7 @@ namespace Tusk.EditorTools
     public static class TestSceneBuilder
     {
         private const string ScenePath = "Assets/Scenes/TuskTest.unity";
+        private const string MeshyPath = "Assets/Art/Meshy/";
 
         [MenuItem("Tusk/Build Test Scene")]
         public static void Build()
@@ -82,8 +83,44 @@ namespace Tusk.EditorTools
         {
             var go = new GameObject("Island");
             var gen = go.AddComponent<IslandGenerator>();
+
+            // Wire Meshy tree + rock prefabs if they exist (skip pine — flagged for regen)
+            var trees = LoadMeshyArray("tree_oak");
+            var rocks = LoadMeshyArray("rock_boulder", "rock_cluster");
+            if (trees.Length > 0 || rocks.Length > 0)
+            {
+                var so = new SerializedObject(gen);
+                if (trees.Length > 0)
+                {
+                    var arr = so.FindProperty("treePrefabs");
+                    arr.arraySize = trees.Length;
+                    for (int i = 0; i < trees.Length; i++)
+                        arr.GetArrayElementAtIndex(i).objectReferenceValue = trees[i];
+                }
+                if (rocks.Length > 0)
+                {
+                    var arr = so.FindProperty("rockPrefabs");
+                    arr.arraySize = rocks.Length;
+                    for (int i = 0; i < rocks.Length; i++)
+                        arr.GetArrayElementAtIndex(i).objectReferenceValue = rocks[i];
+                }
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+
             gen.Generate();
             return gen;
+        }
+
+        private static GameObject[] LoadMeshyArray(params string[] names)
+        {
+            var list = new System.Collections.Generic.List<GameObject>();
+            foreach (var n in names)
+            {
+                var go = AssetDatabase.LoadAssetAtPath<GameObject>(MeshyPath + n + ".fbx");
+                if (go != null) list.Add(go);
+                else Debug.LogWarning($"Tusk: missing Meshy asset {MeshyPath}{n}.fbx");
+            }
+            return list.ToArray();
         }
 
         private static (GameObject playerGO, PlayerController ctrl, PlayerStats stats) BuildPlayer(IslandGenerator island)
@@ -103,17 +140,52 @@ namespace Tusk.EditorTools
             var ctrl = go.AddComponent<PlayerController>();
             var stats = go.AddComponent<PlayerStats>();
 
-            // Visual placeholder (capsule)
-            var visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            visual.name = "Visual";
-            visual.transform.SetParent(go.transform);
-            visual.transform.localPosition = new Vector3(0f, 0.9f, 0f);
-            visual.transform.localScale = new Vector3(0.8f, 0.9f, 0.8f);
-            var col = visual.GetComponent<Collider>();
-            if (col != null) Object.DestroyImmediate(col);
-            TintRenderer(visual, new Color(0.85f, 0.35f, 0.20f));
+            // Visual: prefer Meshy character if imported, fallback to capsule
+            var meshyChar = AssetDatabase.LoadAssetAtPath<GameObject>(MeshyPath + "player_character.fbx");
+            GameObject visual;
+            if (meshyChar != null)
+            {
+                visual = (GameObject)PrefabUtility.InstantiatePrefab(meshyChar);
+                visual.name = "Visual";
+                visual.transform.SetParent(go.transform);
+                visual.transform.localPosition = Vector3.zero;
+                visual.transform.localRotation = Quaternion.identity;
+                // Meshy default scale is variable; auto-fit to ~1.8m tall
+                AutoScaleToHeight(visual, 1.8f);
+            }
+            else
+            {
+                visual = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                visual.name = "Visual";
+                visual.transform.SetParent(go.transform);
+                visual.transform.localPosition = new Vector3(0f, 0.9f, 0f);
+                visual.transform.localScale = new Vector3(0.8f, 0.9f, 0.8f);
+                var col = visual.GetComponent<Collider>();
+                if (col != null) Object.DestroyImmediate(col);
+                TintRenderer(visual, new Color(0.85f, 0.35f, 0.20f));
+            }
 
             return (go, ctrl, stats);
+        }
+
+        /// <summary>Scale a model so its bounding-box height equals targetHeight (meters).</summary>
+        private static void AutoScaleToHeight(GameObject go, float targetHeight)
+        {
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return;
+            Bounds b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+            float currentHeight = b.size.y;
+            if (currentHeight < 0.01f) return;
+            float scale = targetHeight / currentHeight;
+            go.transform.localScale *= scale;
+
+            // After scaling, re-measure and place bottom at parent origin
+            renderers = go.GetComponentsInChildren<Renderer>();
+            b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+            float yOffset = go.transform.position.y - b.min.y;
+            go.transform.position += new Vector3(0f, yOffset, 0f);
         }
 
         private static Camera BuildCamera(GameObject player)
