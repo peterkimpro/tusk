@@ -15,9 +15,9 @@ namespace Tusk.CameraRig
         [SerializeField] private Vector3 targetOffset = new Vector3(0f, 1.6f, 0f);
 
         [Header("Orbit")]
-        [SerializeField] private float distance = 6f;
-        [SerializeField] private float minPitch = -25f;
-        [SerializeField] private float maxPitch = 70f;
+        [SerializeField] private float distance = 9f;
+        [SerializeField] private float minPitch = -10f;
+        [SerializeField] private float maxPitch = 60f;
         [SerializeField] private float yawSensitivity = 0.18f;
         [SerializeField] private float pitchSensitivity = 0.14f;
 
@@ -25,7 +25,7 @@ namespace Tusk.CameraRig
         [SerializeField] private float positionSmoothTime = 0.06f;
 
         private float _yaw = 0f;
-        private float _pitch = 22f;
+        private float _pitch = 18f;
         private Vector3 _velocity;
         private InputAction _lookAction;
 

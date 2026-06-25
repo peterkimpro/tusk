@@ -68,15 +68,23 @@ namespace Tusk.EditorTools
             var sun = new GameObject("Sun");
             var l = sun.AddComponent<Light>();
             l.type = LightType.Directional;
-            l.intensity = 1.4f;
-            l.color = new Color(1.00f, 0.95f, 0.85f);
+            l.intensity = 1.6f;
+            l.color = new Color(1.00f, 0.96f, 0.88f);
             l.shadows = LightShadows.Soft;
-            sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            l.shadowStrength = 0.55f;
+            sun.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+
+            // Distant fog gives depth + hides the horizon void
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.55f, 0.72f, 0.88f);
+            RenderSettings.fogStartDistance = 80f;
+            RenderSettings.fogEndDistance = 220f;
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor    = new Color(0.55f, 0.65f, 0.82f);
-            RenderSettings.ambientEquatorColor = new Color(0.38f, 0.40f, 0.42f);
-            RenderSettings.ambientGroundColor  = new Color(0.20f, 0.22f, 0.18f);
+            RenderSettings.ambientSkyColor    = new Color(0.60f, 0.72f, 0.88f);
+            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.48f, 0.50f);
+            RenderSettings.ambientGroundColor  = new Color(0.25f, 0.26f, 0.22f);
         }
 
         private static IslandGenerator BuildIsland()
@@ -150,8 +158,10 @@ namespace Tusk.EditorTools
                 visual.transform.SetParent(go.transform);
                 visual.transform.localPosition = Vector3.zero;
                 visual.transform.localRotation = Quaternion.identity;
-                // Meshy default scale is variable; auto-fit to ~1.8m tall
-                AutoScaleToHeight(visual, 1.8f);
+                // Hide the pedestal/base disc that Meshy adds for "display stand" look
+                StripCharacterPedestal(visual);
+                // Scale up so character reads as a hero, not a figurine (3m visual height)
+                AutoScaleToHeight(visual, 3.0f);
                 // Placeholder tint until refine pass adds PBR textures
                 TintRenderer(visual, new Color(0.55f, 0.42f, 0.32f)); // leather brown
             }
@@ -168,6 +178,35 @@ namespace Tusk.EditorTools
             }
 
             return (go, ctrl, stats);
+        }
+
+        /// <summary>
+        /// Meshy character previews often have a circular display pedestal at the base.
+        /// Detect any mesh whose bounding-box is flat (very low height) and lives at the
+        /// bottom of the character — that's the pedestal. Disable its renderer.
+        /// </summary>
+        private static void StripCharacterPedestal(GameObject go)
+        {
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            if (renderers.Length < 2) return;
+
+            // Find overall bounds + the lowest mesh
+            Bounds total = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) total.Encapsulate(renderers[i].bounds);
+            float totalHeight = total.size.y;
+
+            foreach (var r in renderers)
+            {
+                var b = r.bounds;
+                bool isFlat = b.size.y < totalHeight * 0.15f;        // mesh height < 15% of full
+                bool isAtFeet = b.min.y < total.min.y + totalHeight * 0.10f; // near the ground
+                bool isWide = Mathf.Max(b.size.x, b.size.z) > totalHeight * 0.35f; // disc-like aspect
+                if (isFlat && isAtFeet && isWide)
+                {
+                    r.enabled = false;
+                    Debug.Log($"Tusk: stripped pedestal mesh '{r.name}' from character");
+                }
+            }
         }
 
         /// <summary>Scale a model so its bounding-box height equals targetHeight (meters).</summary>
@@ -196,8 +235,11 @@ namespace Tusk.EditorTools
             go.tag = "MainCamera";
             var cam = go.GetComponent<Camera>() ?? go.AddComponent<Camera>();
             if (go.GetComponent<AudioListener>() == null) go.AddComponent<AudioListener>();
-            cam.clearFlags = CameraClearFlags.Skybox;
-            cam.fieldOfView = 70f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            // Sky-blue gradient feel via solid color until a proper skybox is set
+            cam.backgroundColor = new Color(0.55f, 0.72f, 0.88f);
+            cam.fieldOfView = 60f;
+            cam.farClipPlane = 500f;
 
             var rig = go.GetComponent<ThirdPersonCamera>() ?? go.AddComponent<ThirdPersonCamera>();
             var so = new SerializedObject(rig);
