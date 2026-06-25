@@ -1,4 +1,4 @@
-# WILDFALL — 12-Week Plan to Steam Early Access
+# TUSK — 12-Week Plan to Steam Early Access
 
 ## Philosophy
 

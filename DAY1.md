@@ -16,8 +16,8 @@ This is the only manual setup. Once Unity is initialized, I take over autonomous
 
 1. In Unity Hub, click **New Project**
 2. Template: **Universal 3D** (URP)
-3. Project name: **wildfall**
-4. Location: **~/wildfall** (this is the path the GitHub repo was cloned to — Unity will populate it)
+3. Project name: **tusk**
+4. Location: **~/tusk** (this is the path the GitHub repo was cloned to — Unity will populate it)
 5. Click **Create Project** — takes 3-5 min to scaffold
 
 ### Step 3: Push the Unity scaffold
@@ -25,7 +25,7 @@ This is the only manual setup. Once Unity is initialized, I take over autonomous
 In Mac Terminal:
 
 ```bash
-cd ~/wildfall && \
+cd ~/tusk && \
 git pull origin main && \
 git add . && \
 git commit -m "Unity 6 LTS URP project scaffold" && \
@@ -36,12 +36,12 @@ If you get an LFS warning, run `git lfs install` first.
 
 ### Step 4: Import Synty Nature pack
 
-You said you own Synty packs. Find your **POLYGON Nature** pack on Asset Store, import it into the wildfall project. (If you DON'T own Nature pack, we'll buy it — $30, essential for the biome.)
+You said you own Synty packs. Find your **POLYGON Nature** pack on Asset Store, import it into the tusk project. (If you DON'T own Nature pack, we'll buy it — $30, essential for the biome.)
 
 In Terminal again:
 
 ```bash
-cd ~/wildfall && \
+cd ~/tusk && \
 git add . && \
 git commit -m "Import Synty Nature pack" && \
 git push origin main
