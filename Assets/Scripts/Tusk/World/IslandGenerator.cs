@@ -158,11 +158,7 @@ namespace Tusk.World
                 go.transform.rotation = Quaternion.Euler(0f, Random.value * 360f, 0f);
                 // Adjust Y so the bounding-box bottom sits on the ground (Meshy origins are often centered, not at-feet)
                 AlignBottomToGround(go, pos.y);
-                // Placeholder tint while unrefined Meshy previews are pure white
-                Color tint = fallbackName == "Tree"
-                    ? new Color(0.30f, 0.55f, 0.22f)  // forest green
-                    : new Color(0.50f, 0.50f, 0.52f); // weathered grey
-                ApplyPlaceholderTint(go, tint);
+                // No tint — refined FBXs ship with their own PBR textures (Meshy refine output)
                 return; // already placed
             }
             else

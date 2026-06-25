@@ -162,8 +162,7 @@ namespace Tusk.EditorTools
                 StripCharacterPedestal(visual);
                 // Scale up so character reads as a hero, not a figurine (3m visual height)
                 AutoScaleToHeight(visual, 3.0f);
-                // Placeholder tint until refine pass adds PBR textures
-                TintRenderer(visual, new Color(0.55f, 0.42f, 0.32f)); // leather brown
+                // No tint — refined player FBX has embedded PBR textures
             }
             else
             {

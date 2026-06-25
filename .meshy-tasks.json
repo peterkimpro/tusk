@@ -1,9 +1,18 @@
 {
-  "generation_batch_1_2026-06-25": {
+  "batch_1_previews_2026-06-25": {
     "player_character": "019f0098-e833-7fa7-bae1-72244bf17a57",
     "tree_oak":         "019f0098-f1e2-7fa8-a815-e0b040b57c00",
     "tree_pine":        "019f0098-f9cc-7ca9-989b-35ec2ad818ef",
     "rock_boulder":     "019f0098-ffad-7caa-950e-e69546db571c",
     "rock_cluster":     "019f0099-057d-7e56-ace8-b4d74ac0d6f2"
+  },
+  "batch_2_refines_2026-06-25": {
+    "player_character": "019f00e1-9410-7cb6-964c-04a4661abc0d",
+    "tree_oak":         "019f00e1-946b-7b12-b019-843c920e39db",
+    "rock_boulder":     "019f00e1-94c2-7cb7-8271-c7be83e8bab3",
+    "rock_cluster":     "019f00e1-951a-7ae0-a16e-0e5a31d7eac4"
+  },
+  "batch_2_pine_regen_2026-06-25": {
+    "tree_pine_v2":     "019f00e1-5418-7957-9ab6-be7d79f3e5bc"
   }
 }
