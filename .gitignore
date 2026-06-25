@@ -45,3 +45,13 @@ Desktop.ini
 # Local config
 *.env
 *.local
+
+# Secrets (NEVER commit)
+*api_key*
+*api-key*
+*secret*
+*token*
+*.pem
+*.key
+.meshy*
+meshy_*
