@@ -32,20 +32,17 @@ namespace Tusk.EditorTools
             importer.importLights = false;
             importer.importVisibility = true;
 
-            if (name.Contains("character") || name.Contains("player") || name.Contains("hunter"))
+            if (name.Contains("character") || name.Contains("player") || name.Contains("hunter") ||
+                name.Contains("creature") || name.Contains("wolf") || name.Contains("boar") ||
+                name.Contains("lizard") || name.Contains("beast"))
             {
-                // Player / humanoid character — Humanoid rig allows Mixamo retargeting too
-                importer.animationType = ModelImporterAnimationType.Human;
-                importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
-                importer.optimizeGameObjects = false; // keep bone hierarchy explorable
-                importer.meshCompression = ModelImporterMeshCompression.Off;
-            }
-            else if (name.Contains("creature") || name.Contains("wolf") || name.Contains("boar") ||
-                     name.Contains("lizard") || name.Contains("beast"))
-            {
-                // Creatures — Generic rig (non-humanoid skeletons)
+                // Characters & creatures use GENERIC rig.
+                // Humanoid rig requires Hips/Spine/etc. named bones — Meshy's preview
+                // FBX doesn't have those (only the refined+rigged version does). Generic
+                // works regardless of bone-naming convention and is sufficient when
+                // animations come from the same Meshy pipeline (no Mixamo retargeting).
                 importer.animationType = ModelImporterAnimationType.Generic;
-                importer.meshCompression = ModelImporterMeshCompression.Low;
+                importer.meshCompression = ModelImporterMeshCompression.Off;
             }
             else
             {
