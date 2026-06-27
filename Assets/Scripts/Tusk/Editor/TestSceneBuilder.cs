@@ -46,11 +46,19 @@ namespace Tusk.EditorTools
             EnsureFolder("Assets/Scenes");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
+            // URP post-process volume (bloom + color + vignette + tonemapping)
+            var sceneRoot = new GameObject("TuskRoot");
+            var profile = TuskPostProcessSetup.EnsureProfile();
+            TuskPostProcessSetup.AttachGlobalVolume(sceneRoot, profile);
+
             BuildLighting();
             var island   = BuildIsland();
             var (player, playerCtrl, playerStats) = BuildPlayer(island);
             var cam      = BuildCamera(player);
             BuildHud(playerCtrl, playerStats);
+
+            // Apply Tusk toon shader to all renderers in the scene for stylized look
+            ApplyToonShaderRecursively();
 
             // Hook camera reference into player controller AFTER cam exists
             var so = new SerializedObject(playerCtrl);
@@ -65,26 +73,51 @@ namespace Tusk.EditorTools
 
         private static void BuildLighting()
         {
-            var sun = new GameObject("Sun");
-            var l = sun.AddComponent<Light>();
-            l.type = LightType.Directional;
-            l.intensity = 1.6f;
-            l.color = new Color(1.00f, 0.96f, 0.88f);
-            l.shadows = LightShadows.Soft;
-            l.shadowStrength = 0.55f;
-            sun.transform.rotation = Quaternion.Euler(45f, -30f, 0f);
+            // 3-POINT LIGHTING — the standard cinematic + stylized recipe:
+            // warm KEY (from above-right) + cool FILL (from above-left) + RIM (from behind)
+            // The rim light is what makes AI-generated meshes feel "intentional" instead of
+            // "AI slop" — it re-establishes silhouette regardless of texture quality.
 
-            // Distant fog gives depth + hides the horizon void
+            // KEY — warm, brightest, casts shadows
+            var keyGO = new GameObject("KeyLight");
+            var key = keyGO.AddComponent<Light>();
+            key.type = LightType.Directional;
+            key.intensity = 1.5f;
+            key.color = new Color(1.00f, 0.92f, 0.78f);
+            key.shadows = LightShadows.Soft;
+            key.shadowStrength = 0.65f;
+            keyGO.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
+
+            // FILL — cool, opposite side, no shadows
+            var fillGO = new GameObject("FillLight");
+            var fill = fillGO.AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.intensity = 0.55f;
+            fill.color = new Color(0.55f, 0.68f, 0.92f);
+            fill.shadows = LightShadows.None;
+            fillGO.transform.rotation = Quaternion.Euler(30f, 145f, 0f);
+
+            // RIM — from behind player toward camera, separates char from background
+            var rimGO = new GameObject("RimLight");
+            var rim = rimGO.AddComponent<Light>();
+            rim.type = LightType.Directional;
+            rim.intensity = 0.85f;
+            rim.color = new Color(1.00f, 0.85f, 0.55f);
+            rim.shadows = LightShadows.None;
+            rimGO.transform.rotation = Quaternion.Euler(15f, 200f, 0f);
+
+            // Atmospheric fog — hides horizon void + adds depth
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.55f, 0.72f, 0.88f);
-            RenderSettings.fogStartDistance = 80f;
-            RenderSettings.fogEndDistance = 220f;
+            RenderSettings.fogStartDistance = 90f;
+            RenderSettings.fogEndDistance = 240f;
 
+            // Ambient: warmer sky for stylized feel
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor    = new Color(0.60f, 0.72f, 0.88f);
-            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.48f, 0.50f);
-            RenderSettings.ambientGroundColor  = new Color(0.25f, 0.26f, 0.22f);
+            RenderSettings.ambientSkyColor    = new Color(0.60f, 0.74f, 0.90f);
+            RenderSettings.ambientEquatorColor = new Color(0.50f, 0.52f, 0.55f);
+            RenderSettings.ambientGroundColor  = new Color(0.30f, 0.28f, 0.22f);
         }
 
         private static IslandGenerator BuildIsland()
@@ -347,6 +380,59 @@ namespace Tusk.EditorTools
         {
             if (AssetDatabase.IsValidFolder(path)) return;
             AssetDatabase.CreateFolder("Assets", path.Substring("Assets/".Length));
+        }
+
+        /// <summary>
+        /// Walk all active renderers in the scene and replace their material's shader with
+        /// the Tusk/Toon stylized shader. PRESERVES the existing _BaseMap texture (so the
+        /// PBR albedo from Meshy refine is kept) while throwing away the noisy normal/
+        /// metallic/roughness maps. This is the "single biggest visual jump" trick per
+        /// the AI 3D research — cel-shading hides AI texture artifacts.
+        /// </summary>
+        private static void ApplyToonShaderRecursively()
+        {
+            var toonShader = Shader.Find("Tusk/Toon");
+            if (toonShader == null)
+            {
+                Debug.LogWarning("Tusk: Tusk/Toon shader not found. Skipping toon pass.");
+                return;
+            }
+
+            int converted = 0;
+            foreach (var renderer in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                // Skip UI / particle / billboards
+                if (renderer is SpriteRenderer) continue;
+                if (renderer.gameObject.layer == LayerMask.NameToLayer("UI")) continue;
+
+                var newMats = new Material[renderer.sharedMaterials.Length];
+                for (int i = 0; i < newMats.Length; i++)
+                {
+                    var src = renderer.sharedMaterials[i];
+                    var m = new Material(toonShader);
+                    // Preserve base color texture if source had one
+                    if (src != null && src.HasProperty("_BaseMap"))
+                    {
+                        var tex = src.GetTexture("_BaseMap");
+                        if (tex != null) m.SetTexture("_BaseMap", tex);
+                    }
+                    else if (src != null && src.HasProperty("_MainTex"))
+                    {
+                        var tex = src.GetTexture("_MainTex");
+                        if (tex != null) m.SetTexture("_BaseMap", tex);
+                    }
+                    // Preserve base color tint
+                    if (src != null && src.HasProperty("_BaseColor"))
+                        m.SetColor("_BaseColor", src.GetColor("_BaseColor"));
+                    else if (src != null && src.HasProperty("_Color"))
+                        m.SetColor("_BaseColor", src.GetColor("_Color"));
+
+                    newMats[i] = m;
+                }
+                renderer.sharedMaterials = newMats;
+                converted++;
+            }
+            Debug.Log($"Tusk: applied toon shader to {converted} renderers");
         }
 
         private static void EnsureSceneInBuildSettings(string scenePath)
