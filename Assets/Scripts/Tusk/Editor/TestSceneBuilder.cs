@@ -57,8 +57,9 @@ namespace Tusk.EditorTools
             var cam      = BuildCamera(player);
             BuildHud(playerCtrl, playerStats);
 
-            // Apply Tusk toon shader to all renderers in the scene for stylized look
-            ApplyToonShaderRecursively();
+            // (Toon shader disabled — outline pass broke on Meshy's high-poly meshes,
+            // turning everything into black blobs. URP/Lit materials + URP Volume +
+            // 3-point lighting do the styling work without the shader hack.)
 
             // Hook camera reference into player controller AFTER cam exists
             var so = new SerializedObject(playerCtrl);
